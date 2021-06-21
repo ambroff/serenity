@@ -543,6 +543,9 @@ KResult IPv4Socket::setsockopt(int level, int option, Userspace<const void*> use
         m_multicast_memberships.remove_first_matching([&address](auto& a) { return a == address; });
         return KSuccess;
     }
+    case IP_TOS: {
+        // FIXME: Implement
+    }
     default:
         return ENOPROTOOPT;
     }
