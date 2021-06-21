@@ -1,0 +1,13 @@
+diff --git a/src/portable_endian.h b/src/portable_endian.h
+index 85a6147ca119..5f7adf7d58f4 100644
+--- a/src/portable_endian.h
++++ b/src/portable_endian.h
+@@ -10,7 +10,7 @@
+ 
+ #endif
+ 
+-#if defined(__CYGWIN__)
++#if defined(__CYGWIN__) || defined(__serenity__)
+ 
+ #	include <endian.h>
+ 

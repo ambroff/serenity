@@ -1,0 +1,15 @@
+diff --git a/src/iperf.h b/src/iperf.h
+index 3fc91d0c088f..cdfbda0a43e3 100644
+--- a/src/iperf.h
++++ b/src/iperf.h
+@@ -73,6 +73,10 @@
+ #include <openssl/evp.h>
+ #endif // HAVE_SSL
+ 
++#if defined(__serenity__)
++typedef unsigned int uint;
++#endif
++
+ #if !defined(__IPERF_API_H)
+ typedef uint64_t iperf_size_t;
+ #endif // __IPERF_API_H
