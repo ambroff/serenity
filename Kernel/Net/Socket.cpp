@@ -14,6 +14,7 @@
 #include <Kernel/Process.h>
 #include <Kernel/UnixTypes.h>
 #include <LibC/errno_numbers.h>
+#include <netinet/tcp.h>
 
 namespace Kernel {
 
@@ -80,6 +81,21 @@ KResult Socket::queue_connection_from(NonnullRefPtr<Socket> peer)
 
 KResult Socket::setsockopt(int level, int option, Userspace<const void*> user_value, socklen_t user_value_size)
 {
+    dbgln("KWA: setsockopt(level={}, option={}, ...)", level, option);
+
+    if (level == IPPROTO_TCP) {
+        // FIXME: Implement these
+        switch(option) {
+            case TCP_NODELAY:
+                dbgln("KWA: FIXME: Implement TCP_NODELAY for setsockopt");
+                break;
+
+            case TCP_MAXSEG:
+                dbgln("KWA: FIXME: Implement TCP_MAXSEG for setsockopt");
+        }
+        return KSuccess;
+    }
+
     if (level != SOL_SOCKET)
         return ENOPROTOOPT;
     VERIFY(level == SOL_SOCKET);
@@ -104,6 +120,14 @@ KResult Socket::setsockopt(int level, int option, Userspace<const void*> user_va
             m_receive_timeout = timeout.value();
         }
         return KSuccess;
+    case SO_RCVBUF: {
+        dbgln("KWA: FIXME: Implement SO_RCVBUF for setsockopt");
+        return KSuccess;
+    }
+    case SO_SNDBUF: {
+        dbgln("KWA: FIXME: Implement SO_SNDBUF for setsockopt");
+        return KSuccess;
+    }
     case SO_BINDTODEVICE: {
         if (user_value_size != IFNAMSIZ)
             return EINVAL;
@@ -143,9 +167,34 @@ KResult Socket::setsockopt(int level, int option, Userspace<const void*> user_va
 
 KResult Socket::getsockopt(FileDescription&, int level, int option, Userspace<void*> value, Userspace<socklen_t*> value_size)
 {
+    dbgln("KWA: getsockopt(level={}, option={}, ...)", level, option);
+
     socklen_t size;
     if (!copy_from_user(&size, value_size.unsafe_userspace_ptr()))
         return EFAULT;
+
+    if (level == IPPROTO_TCP) {
+        // FIXME: Implement these
+        switch(option) {
+            case TCP_NODELAY: {
+                dbgln("KWA: FIXME: Implement TCP_NODELAY for getsockopt");
+                auto dummy = 0;
+                if (!copy_to_user(static_ptr_cast<int *>(value), &dummy)) {
+                    return EFAULT;
+                }
+                break;
+            }
+
+            case TCP_MAXSEG:
+                dbgln("KWA: FIXME: Implement TCP_MAXSEG for getsockopt");
+                auto dummy = 0;
+                if (!copy_to_user(static_ptr_cast<int *>(value), &dummy)) {
+                    return EFAULT;
+                }
+                break;
+        }
+        return KSuccess;
+    }
 
     // FIXME: Add TCP_NODELAY, IPPROTO_TCP and IPPROTO_IP (used in OpenSSH)
     if (level != SOL_SOCKET) {
@@ -178,6 +227,23 @@ KResult Socket::getsockopt(FileDescription&, int level, int option, Userspace<vo
         if (!copy_to_user(value_size, &size))
             return EFAULT;
         return KSuccess;
+    case SO_RCVBUF: {
+        dbgln("KWA: FIXME: Implement SO_RCVBUF for getsockopt");
+        auto dummy = 1;
+        if (!copy_to_user(static_ptr_cast<int*>(value), &dummy)) {
+            return EFAULT;
+        }
+        return KSuccess;
+    }
+    case SO_SNDBUF: {
+        dbgln("KWA: FIXME: Implement SO_SNDBUF for getsockopt");
+        auto dummy = 1;
+        if (!copy_to_user(static_ptr_cast<int*>(value), &dummy)) {
+            return EFAULT;
+        }
+        return KSuccess;
+    }
+
     case SO_ERROR: {
         if (size < sizeof(int))
             return EINVAL;
@@ -218,7 +284,7 @@ KResult Socket::getsockopt(FileDescription&, int level, int option, Userspace<vo
             return EFAULT;
         return KSuccess;
     default:
-        dbgln("setsockopt({}) at SOL_SOCKET not implemented.", option);
+        dbgln("getsockopt({}) at SOL_SOCKET not implemented.", option);
         return ENOPROTOOPT;
     }
 }
