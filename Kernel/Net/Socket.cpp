@@ -14,7 +14,6 @@
 #include <Kernel/Process.h>
 #include <Kernel/UnixTypes.h>
 #include <LibC/errno_numbers.h>
-#include <netinet/tcp.h>
 
 namespace Kernel {
 
@@ -82,19 +81,6 @@ KResult Socket::queue_connection_from(NonnullRefPtr<Socket> peer)
 KResult Socket::setsockopt(int level, int option, Userspace<const void*> user_value, socklen_t user_value_size)
 {
     dbgln("KWA: setsockopt(level={}, option={}, ...)", level, option);
-
-    if (level == IPPROTO_TCP) {
-        // FIXME: Implement these
-        switch(option) {
-            case TCP_NODELAY:
-                dbgln("KWA: FIXME: Implement TCP_NODELAY for setsockopt");
-                break;
-
-            case TCP_MAXSEG:
-                dbgln("KWA: FIXME: Implement TCP_MAXSEG for setsockopt");
-        }
-        return KSuccess;
-    }
 
     if (level != SOL_SOCKET)
         return ENOPROTOOPT;
@@ -172,29 +158,6 @@ KResult Socket::getsockopt(FileDescription&, int level, int option, Userspace<vo
     socklen_t size;
     if (!copy_from_user(&size, value_size.unsafe_userspace_ptr()))
         return EFAULT;
-
-    if (level == IPPROTO_TCP) {
-        // FIXME: Implement these
-        switch(option) {
-            case TCP_NODELAY: {
-                dbgln("KWA: FIXME: Implement TCP_NODELAY for getsockopt");
-                auto dummy = 0;
-                if (!copy_to_user(static_ptr_cast<int *>(value), &dummy)) {
-                    return EFAULT;
-                }
-                break;
-            }
-
-            case TCP_MAXSEG:
-                dbgln("KWA: FIXME: Implement TCP_MAXSEG for getsockopt");
-                auto dummy = 0;
-                if (!copy_to_user(static_ptr_cast<int *>(value), &dummy)) {
-                    return EFAULT;
-                }
-                break;
-        }
-        return KSuccess;
-    }
 
     // FIXME: Add TCP_NODELAY, IPPROTO_TCP and IPPROTO_IP (used in OpenSSH)
     if (level != SOL_SOCKET) {

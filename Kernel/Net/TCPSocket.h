@@ -162,6 +162,9 @@ public:
 
     static NetworkOrdered<u16> compute_tcp_checksum(IPv4Address const& source, IPv4Address const& destination, TCPPacket const&, u16 payload_size);
 
+    KResult setsockopt(int level, int option, Userspace<const void*> user_value, socklen_t user_value_size) override;
+    KResult getsockopt(FileDescription& fd, int level, int option, Userspace<void*> user_value, Userspace<socklen_t*> user_value_size) override;
+
 protected:
     void set_direction(Direction direction) { m_direction = direction; }
 

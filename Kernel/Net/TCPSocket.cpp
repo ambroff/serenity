@@ -19,6 +19,7 @@
 #include <Kernel/Net/TCPSocket.h>
 #include <Kernel/Process.h>
 #include <Kernel/Random.h>
+#include <netinet/tcp.h>
 
 namespace Kernel {
 
@@ -617,4 +618,55 @@ bool TCPSocket::can_write(const FileDescription& file_description, size_t size) 
         return unacked_packets.size + size <= m_send_window_size;
     });
 }
+
+KResult TCPSocket::setsockopt(int level, int option, Userspace<const void*> user_value, socklen_t user_value_size) {
+    if (level != IPPROTO_TCP) {
+        return Socket::setsockopt(level, option, user_value, user_value_size);
+    }
+
+    // FIXME: Implement these
+    switch(option) {
+        case TCP_NODELAY:
+            dbgln("KWA: FIXME: Implement TCP_NODELAY for setsockopt");
+            break;
+
+        case TCP_MAXSEG:
+            dbgln("KWA: FIXME: Implement TCP_MAXSEG for setsockopt");
+            break;
+
+        default:
+            dbgln("KWA: FIXME: Unhandled setsockopt option {}", option);
+            break;
+    }
+
+    return KSuccess;
+}
+
+KResult TCPSocket::getsockopt(FileDescription& fd, int level, int option, Userspace<void*> user_value, Userspace<socklen_t*> user_value_size) {
+    if (level != IPPROTO_TCP) {
+        return Socket::getsockopt(fd, level, option, user_value, user_value_size);
+    }
+
+    // FIXME: Implement these
+    switch(option) {
+        case TCP_NODELAY: {
+            dbgln("KWA: FIXME: Implement TCP_NODELAY for getsockopt");
+            auto dummy = 0;
+            if (!copy_to_user(static_ptr_cast<int *>(user_value), &dummy)) {
+                return EFAULT;
+            }
+            break;
+        }
+
+        case TCP_MAXSEG:
+            dbgln("KWA: FIXME: Implement TCP_MAXSEG for getsockopt");
+            auto dummy = 0;
+            if (!copy_to_user(static_ptr_cast<int *>(user_value), &dummy)) {
+                return EFAULT;
+            }
+            break;
+    }
+    return KSuccess;
+}
+
 }
