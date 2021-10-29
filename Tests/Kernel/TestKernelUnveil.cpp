@@ -5,7 +5,10 @@
  */
 
 #include <LibTest/TestCase.h>
+#include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 TEST_CASE(test_argument_validation)
@@ -33,6 +36,30 @@ TEST_CASE(test_argument_validation)
     res = unveil("/etc", "f");
     EXPECT_EQ(res, -1);
     EXPECT_EQ(errno, EINVAL);
+}
+
+TEST_CASE(test_symlinks)
+{
+    ScopeGuard cleanup{[]() {
+        unveil("/tmp/test-kernel-unveil", "c");
+        unlink("/tmp/test-kernel-unveil/bar");
+        rmdir("/tmp/test-kernel-unveil/foo/1");
+        rmdir("/tmp/test-kernel-unveil/foo");
+        rmdir("/tmp/test-kernel-unveil");
+    }};
+
+    EXPECT_EQ(mkdir("/tmp/test-kernel-unveil", 0755), 0);
+    EXPECT_EQ(mkdir("/tmp/test-kernel-unveil/foo", 0755), 0);
+    EXPECT_EQ(mkdir("/tmp/test-kernel-unveil/foo/1", 0755), 0);
+
+    EXPECT_EQ(symlink("/tmp/test-kernel-unveil/foo", "/tmp/test-kernel-unveil/bar"), 0);
+
+    EXPECT_EQ(unveil("/tmp/test-kernel-unveil/foo", "r"), 0);
+
+    EXPECT_EQ(access("/tmp/test-kernel-unveil/foo/1", R_OK), 0);
+
+    EXPECT_EQ(access("/tmp/test-kernel-unveil/bar/1", R_OK), -1);
+    EXPECT_EQ(errno, ENOENT);
 }
 
 TEST_CASE(test_failures)
