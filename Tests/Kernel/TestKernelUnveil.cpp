@@ -40,13 +40,15 @@ TEST_CASE(test_argument_validation)
 
 TEST_CASE(test_symlinks)
 {
-    ScopeGuard cleanup{[]() {
+    auto do_cleanup = []() {
         unveil("/tmp/test-kernel-unveil", "c");
         unlink("/tmp/test-kernel-unveil/bar");
         rmdir("/tmp/test-kernel-unveil/foo/1");
         rmdir("/tmp/test-kernel-unveil/foo");
         rmdir("/tmp/test-kernel-unveil");
-    }};
+    };
+    ScopeGuard cleanup { do_cleanup };
+    do_cleanup();
 
     EXPECT_EQ(mkdir("/tmp/test-kernel-unveil", 0755), 0);
     EXPECT_EQ(mkdir("/tmp/test-kernel-unveil/foo", 0755), 0);
