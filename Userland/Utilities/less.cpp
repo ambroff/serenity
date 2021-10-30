@@ -11,6 +11,7 @@
 #include <AK/Utf8View.h>
 #include <AK/Vector.h>
 #include <LibCore/ArgsParser.h>
+#include <csignal>
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -19,18 +20,14 @@
 #include <unistd.h>
 
 static struct termios g_save;
-static struct winsize g_wsize;
+
+static Atomic<bool> g_resized { false };
 
 static void setup_tty(bool switch_buffer)
 {
     // Save previous tty settings.
     if (tcgetattr(STDOUT_FILENO, &g_save) == -1) {
         perror("tcgetattr(3)");
-    }
-
-    // Get the window size.
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &g_wsize) == -1) {
-        perror("ioctl(2)");
     }
 
     struct termios raw = g_save;
@@ -95,12 +92,44 @@ static Vector<String> wrap_line(Utf8View const& string, size_t width)
 
 class Pager {
 public:
-    Pager(FILE* file, FILE* tty, size_t width, size_t height)
+    Pager(FILE* file, FILE* tty)
         : m_file(file)
         , m_tty(tty)
-        , m_width(width)
-        , m_height(height)
+        , m_width(80)
+        , m_height(25)
     {
+        resize();
+    }
+
+    void resize()
+    {
+        // First, we get the current size of the window.
+        struct winsize window;
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window) == -1) {
+            perror("ioctl(2)");
+            return;
+        }
+
+        auto additional_lines = window.ws_row - m_height;
+        while (additional_lines > 0) {
+            if (!read_line()) {
+                break;
+            }
+            --additional_lines;
+        }
+
+        m_width = window.ws_col;
+        m_height = window.ws_row;
+
+        // Next, we repaint the whole screen. We need to figure out what line was at the top
+        // of the screen, and seek there and re-display everything again.
+        //clear_status();
+        out("\e[2J\e[0G\e[0d");
+        write_range(m_line, m_height - 1);
+        if (!m_prompt.is_null()) {
+            status_line();
+        }
+        fflush(m_tty);
     }
 
     void up()
@@ -309,12 +338,19 @@ private:
     String m_prompt;
 };
 
-static String get_key_sequence()
+/// Return the next key sequence, or nothing if a signal is received while waiting
+/// to read the next sequence.
+static Optional<String> get_key_sequence()
 {
     // We need a buffer to handle ansi sequences.
     char buff[8];
+
     ssize_t n = read(STDOUT_FILENO, buff, sizeof(buff));
-    return String(buff, n);
+    if (n > 0) {
+        return String(buff, n);
+    } else {
+        return {};
+    }
 }
 
 static void cat_file(FILE* file)
@@ -337,7 +373,7 @@ static void cat_file(FILE* file)
 
 int main(int argc, char** argv)
 {
-    if (pledge("stdio rpath tty", nullptr) < 0) {
+    if (pledge("stdio rpath tty sigaction", nullptr) < 0) {
         perror("pledge");
         return 1;
     }
@@ -367,6 +403,10 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    signal(SIGWINCH, [](auto) {
+        g_resized = true;
+    });
+
     if (pledge("stdio tty", nullptr) < 0) {
         perror("pledge");
         return 1;
@@ -386,14 +426,25 @@ int main(int argc, char** argv)
 
     setup_tty(!dont_switch_buffer);
 
-    Pager pager(file, stdout, g_wsize.ws_col, g_wsize.ws_row);
+    Pager pager(file, stdout);
     pager.set_filename(filename);
     pager.set_prompt(prompt);
 
     pager.init();
 
     StringBuilder modifier_buffer = StringBuilder(10);
-    for (String sequence;; sequence = get_key_sequence()) {
+    for (Optional<String> sequence_value;; sequence_value = get_key_sequence()) {
+        if (g_resized) {
+            g_resized = false;
+            pager.resize();
+        }
+
+        if (!sequence_value.has_value()) {
+            continue;
+        }
+
+        auto sequence = sequence_value.value();
+
         if (sequence.to_uint().has_value()) {
             modifier_buffer.append(sequence);
         } else {
