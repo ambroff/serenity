@@ -98,11 +98,15 @@ UNMAP_AFTER_INIT ErrorOr<void> I8042Controller::detect_devices()
     u8 configuration;
     {
         SpinlockLocker lock(m_lock);
+
         // Note: This flushes all the garbage left in the controller registers
         TRY(drain_output_buffer());
 
         TRY(do_wait_then_write(I8042Port::Command, I8042Command::DisableFirstPS2Port));
         TRY(do_wait_then_write(I8042Port::Command, I8042Command::DisableSecondPS2Port)); // ignored if it doesn't exist
+
+        // Note: This flushes all the garbage left in the controller registers
+        TRY(drain_output_buffer());
 
         TRY(do_wait_then_write(I8042Port::Command, I8042Command::ReadConfiguration));
         configuration = TRY(do_wait_then_read(I8042Port::Buffer));
@@ -127,12 +131,17 @@ UNMAP_AFTER_INIT ErrorOr<void> I8042Controller::detect_devices()
         // Perform controller self-test
         TRY(do_wait_then_write(I8042Port::Command, I8042Command::TestPS2Controller));
         auto self_test_result = TRY(do_wait_then_read(I8042Port::Buffer));
+        if (self_test_result == I8042Response::Acknowledge) {
+            dbgln("KWA: Trying again");
+            self_test_result = TRY(do_wait_then_read(I8042Port::Buffer));
+        }
         if (self_test_result == I8042Response::ControllerTestPassed) {
+            dbgln("KWA: Self test succeeded");
             // Restore configuration in case the controller reset
             TRY(do_wait_then_write(I8042Port::Command, I8042Command::WriteConfiguration));
             TRY(do_wait_then_write(I8042Port::Buffer, configuration));
         } else {
-            dbgln("I8042: Controller self test failed");
+            dbgln("I8042: Controller self test failed: {}", static_cast<int>(self_test_result));
         }
 
         // Test ports and enable them if available
@@ -331,16 +340,23 @@ ErrorOr<void> I8042Controller::prepare_for_input(HIDDevice::Type device)
     u8 const second_port_flag = device == HIDDevice::Type::Keyboard ? 0 : I8042StatusFlag::SecondPS2PortOutputBuffer;
     for (int attempt = 0; attempt < 1000; attempt++) {
         u8 status = IO::in8(I8042Port::Status);
-        if (!(status & I8042StatusFlag::OutputBuffer)) {
+        if ((status & I8042StatusFlag::OutputBuffer) == 0) {
+            dbgln("KWA: Not ready yet");
             IO::delay(1000);
             continue;
         }
-        if (device == HIDDevice::Type::Unknown)
+        if (device == HIDDevice::Type::Unknown) {
+            dbgln("KWA: Unknown device type");
             return {};
-        if ((status & I8042StatusFlag::SecondPS2PortOutputBuffer) == second_port_flag)
+        }
+        if ((status & I8042StatusFlag::SecondPS2PortOutputBuffer) == second_port_flag) {
+            dbgln("KWA: SecondPS2PortOutputBuffer");
             return {};
+        }
         IO::delay(1000);
     }
+
+    dbgln("KWA: i8042 controller busy");
     return Error::from_errno(EBUSY);
 }
 
