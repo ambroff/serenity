@@ -547,13 +547,10 @@ UNMAP_AFTER_INIT void Processor::cpu_setup()
         write_cr4(read_cr4() | 0x200000);
     }
 
-    if (has_feature(CPUFeature::UMIP)) {
-        write_cr4(read_cr4() | 0x800);
-    }
-
-    if (has_feature(CPUFeature::TSC)) {
-        write_cr4(read_cr4() | 0x4);
-    }
+    // KWA: FIXME: We don't boot on Pentium II with this flag enabled.
+//    if (has_feature(CPUFeature::UMIP)) {
+//        write_cr4(read_cr4() | 0x800);
+//    }
 
     if (has_feature(CPUFeature::XSAVE)) {
         // Turn on CR4.OSXSAVE
