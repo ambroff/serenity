@@ -86,6 +86,9 @@ set(KERNEL_SOURCES
     Graphics/GraphicsManagement.cpp
     Graphics/Intel/NativeDisplayConnector.cpp
     Graphics/Intel/NativeGraphicsAdapter.cpp
+    Graphics/Matrox/Console.cpp
+    Graphics/Matrox/GraphicsAdapter.cpp
+    Graphics/Matrox/DisplayConnector.cpp
     Graphics/VGA/DisplayConnector.cpp
     Graphics/VGA/ISAAdapter.cpp
     Graphics/VGA/PCIAdapter.cpp
