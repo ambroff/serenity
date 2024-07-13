@@ -1,0 +1,12 @@
+diff --git a/lib-src/emacsclient.c b/lib-src/emacsclient.c
+index 9e72ee611443..7ca5dd5c2cb7 100644
+--- a/lib-src/emacsclient.c
++++ b/lib-src/emacsclient.c
+@@ -54,6 +54,7 @@ char *w32_getenv (const char *);
+ # include <netinet/in.h>
+ # include <sys/socket.h>
+ # include <sys/un.h>
++# include <sys/resource.h>
+ 
+ # define SOCKETS_IN_FILE_SYSTEM
+ 

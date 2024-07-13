@@ -1,0 +1,21 @@
+commit 9bc594b2f6c00008a2ff3a1676daa00156eb1556
+Author: Kyle Ambroff-Kao <kyle@ambroffkao.com>
+Date:   Thu May 2 15:02:44 2024 -0700
+
+    Add serenityos to ported systems
+
+diff --git a/configure.ac b/configure.ac
+index 473ae06833c6..b6e4594552be 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -808,6 +808,10 @@ case "${canonical}" in
+     opsys=haiku
+   ;;
+ 
++  *-serenity )
++    opsys=serenity
++  ;;
++
+   ## Intel 386 machines where we don't care about the manufacturer.
+   i[3456]86-*-* )
+     case "${canonical}" in
